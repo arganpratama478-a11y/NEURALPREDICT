@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEURAL_OVERRIDE // ROOT_ACCESS</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Fira+Code:wght@400;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background-color: #020406; color: #00ff41; /* Warna hijau hacker */
+    font-family: 'Fira Code', monospace;
+    min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    overflow-x: hidden; position: relative;
+    -webkit-tap-highlight-color: transparent; 
+  }
+
+  /* CRT / Scanline Effect */
+  body::after {
+    content: " "; display: block; position: absolute; top: 0; left: 0; bottom: 0; right: 0;
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+    z-index: 2; background-size: 100% 2px, 3px 100%; pointer-events: none;
+  }
+
+  /* Matrix Background */
+  #matrix-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; opacity: 0.15; pointer-events: none; }
+
+  .container {
+    position: relative; z-index: 3;
+    background: rgba(5, 10, 5, 0.9); backdrop-filter: blur(5px);
+    border: 1px solid #00ff41; border-radius: 4px; /* Kotak kaku ala terminal */
+    width: 100%; max-width: 450px; padding: 20px;
+    box-shadow: 0 0 15px rgba(0, 255, 65, 0.2), inset 0 0 15px rgba(0, 255, 65, 0.1);
+    margin: 20px;
+  }
+
+  .header { margin-bottom: 20px; border-bottom: 1px dashed #00ff41; padding-bottom: 10px; }
+  .header h1 { font-size: 18px; font-weight: 700; letter-spacing: 1px; color: #00ff41; text-transform: uppercase; }
+  .header p { font-size: 10px; color: #008f11; margin-top: 5px; }
+
+  /* Terminal Box */
+  .terminal {
+    background: #000; border: 1px solid #008f11; border-radius: 2px;
+    padding: 10px; font-size: 10px; color: #00ff41; height: 130px;
+    overflow-y: auto; margin-bottom: 15px; box-shadow: inset 0 0 5px #000;
+  }
+  .terminal::-webkit-scrollbar { width: 4px; }
+  .terminal::-webkit-scrollbar-thumb { background: #008f11; }
+  .t-line { margin-bottom: 3px; opacity: 0; animation: fadeIn 0.1s forwards; }
+  .t-line.err { color: #ff003c; }
+  .t-line.warn { color: #fce803; }
+  .t-line.info { color: #00e5ff; }
+  @keyframes fadeIn { to { opacity: 1; } }
+
+  .input-group { margin-bottom: 12px; }
+  .input-group label { display: block; font-size: 10px; color: #008f11; margin-bottom: 5px; }
+  input[type="text"], select {
+    width: 100%; padding: 10px; background: #000;
+    border: 1px solid #008f11; border-radius: 2px; color: #00ff41;
+    font-family: 'Fira Code', monospace; font-size: 12px; outline: none;
+  }
+  input[type="text"]:focus, select:focus { border-color: #00ff41; box-shadow: 0 0 5px rgba(0,255,65,0.5); }
+  
+  .btn {
+    width: 100%; padding: 12px; background: #008f11;
+    border: none; border-radius: 2px; color: #000; font-size: 12px; font-weight: 800;
+    letter-spacing: 1px; cursor: pointer; text-transform: uppercase;
+    transition: all 0.2s;
+  }
+  .btn:hover { background: #00ff41; box-shadow: 0 0 10px #00ff41; }
+  .btn:disabled { background: #333; color: #666; box-shadow: none; border: none; }
+
+  .btn-social { padding: 10px; border-radius: 2px; font-weight: bold; cursor: pointer; margin-bottom: 8px; border: 1px solid #008f11; background: #000; color: #00ff41; width: 100%; font-size: 11px; font-family: 'Fira Code'; }
+  .btn-social:hover { background: #008f11; color: #000; }
+
+  /* Radar */
+  #radar-container { display: none; flex-direction: column; align-items: center; justify-content: center; margin: 20px 0; }
+  .radar { width: 80px; height: 80px; border-radius: 50%; border: 1px solid #00ff41; position: relative; overflow: hidden; }
+  .radar::after { content: ''; position: absolute; top: 0; left: 50%; width: 50%; height: 50%; background: linear-gradient(90deg, transparent, #00ff41); transform-origin: bottom left; animation: sweep 1s linear infinite; }
+  .radar-text { font-size: 10px; color: #00ff41; margin-top: 10px; animation: blink 0.5s infinite alternate; }
+  @keyframes sweep { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  @keyframes blink { from { opacity: 0.2; } to { opacity: 1; } }
+
+  /* Results */
+  #result-box { display: none; margin-top: 15px; }
+  .result-numbers { display: flex; justify-content: space-between; gap: 5px; margin: 10px 0; }
+  .num-box {
+    flex: 1; height: 60px; background: #000; border: 1px solid #00ff41;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px; font-weight: bold; color: #00ff41;
+    box-shadow: inset 0 0 10px rgba(0,255,65,0.2);
+  }
+
+  .math-formula { font-size: 10px; color: #00e5ff; text-align: left; background: #000; padding: 8px; border-left: 2px solid #00e5ff; margin-bottom: 12px; }
+  
+  .track-record { background: #000; border: 1px solid #008f11; padding: 8px; margin-bottom: 12px; }
+  .track-record h4 { font-size: 9px; color: #00ff41; margin-bottom: 5px; text-align: left;}
+  .tr-row { display: flex; justify-content: space-between; font-size: 10px; margin-bottom: 3px; border-bottom: 1px dotted #008f11; padding-bottom: 2px; }
+  .hit { color: #00ff41; } .miss { color: #ff003c; }
+
+  .share-group { display: flex; gap: 5px; }
+  .s-btn { flex: 1; padding: 8px; border-radius: 2px; border: 1px solid #008f11; cursor: pointer; font-size: 10px; background: #000; color: #00ff41; font-family: 'Fira Code';}
+  .s-btn:hover { background: #008f11; color: #000; }
+
+  #paywall { display: none; position: absolute; inset: 0; background: rgba(0, 0, 0, 0.95); z-index: 10; flex-direction: column; align-items: center; justify-content: center; padding: 20px; text-align: center; border: 1px solid #ff003c; }
+  #paywall h2 { color: #ff003c; font-size: 18px; margin-bottom: 10px; }
+  #paywall p { font-size: 11px; color: #888; margin-bottom: 20px; }
+  .btn-premium { background: #ff003c; color: #000; border: none; padding: 12px; font-weight: bold; cursor: pointer; width: 100%; margin-bottom: 10px; font-family: 'Fira Code'; }
+</style>
+</head>
+<body>
+
+<canvas id="matrix-bg"></canvas>
+
+<div class="container" id="main-container">
+  
+  <div id="paywall">
+    <h2>ACCESS_DENIED</h2>
+    <p>Batas limit IP tercapai. Sistem mendeteksi aktivitas mencurigakan. Upgrade ke ROOT_ACCESS untuk membuka bypass.</p>
+    <button class="btn-premium" onclick="alert('Redirect ke Pembayaran')">[ BYPASS LIMIT - Rp 99K ]</button>
+    <button style="background:none; border:none; color:#666; cursor:pointer; font-size:10px;" onclick="document.getElementById('paywall').style.display='none'">[ CANCEL ]</button>
+  </div>
+
+  <div class="header">
+    <h1>ROOT://PREDICTOR</h1>
+    <p>Kernel v9.1.2 // Encrypted Connection</p>
+  </div>
+
+  <div id="login-section">
+    <button class="btn-social" onclick="login('WA')">[ AUTH VIA WHATSAPP ]</button>
+    <button class="btn-social" onclick="login('IG')">[ AUTH VIA INSTAGRAM ]</button>
+    <button class="btn-social" onclick="login('TT')">[ AUTH VIA TIKTOK ]</button>
+  </div>
+
+  <div id="app-section" style="display:none;">
+    <div style="display:flex; justify-content:space-between; margin-bottom:10px; font-size:10px; color:#008f11;">
+      <span id="user-display">root@member</span>
+      <span style="color:#ff003c; cursor:pointer;" onclick="logout()">[ EXIT ]</span>
+    </div>
+
+    <div class="terminal" id="terminal">
+      <div class="t-line info">> INITIALIZING KERNEL MODULES...</div>
+      <div class="t-line">> WAITING FOR TARGET DATA...</div>
+    </div>
+
+    <div id="radar-container">
+      <div class="radar"></div>
+      <div class="radar-text">BRUTE-FORCING ENTROPY...</div>
+    </div>
+
+    <div id="input-area">
+      <div class="input-group">
+        <label>>_ INPUT PARAMETER (TGL/MIMPI)</label>
+        <input type="text" id="input-data" placeholder="e.g. 17081945" autocomplete="off">
+      </div>
+      <div class="input-group">
+        <label>>_ SELECT ALGORITHM</label>
+        <select id="method">
+          <option value="prime">Prime Factorization Method</option>
+          <option value="hash">SHA-256 Collision Matrix</option>
+          <option value="fibonacci">Fibonacci Sequence Override</option>
+          <option value="entropy">Thermodynamic Entropy (∆S)</option>
+        </select>
+      </div>
+      <button class="btn" id="btn-predict" onclick="generatePrediction()">EXECUTE SCRIPT</button>
+    </div>
+
+    <div id="result-box">
+      <div style="font-size:10px; color:#008f11; margin-bottom:5px;">> TARGET VECTOR ACQUIRED:</div>
+      <div class="result-numbers">
+        <div class="num-box" id="n1">0</div>
+        <div class="num-box" id="n2">0</div>
+        <div class="num-box" id="n3">0</div>
+        <div class="num-box" id="n4">0</div>
+      </div>
+      
+      <div class="math-formula" id="math-display"></div>
+
+      <div class="track-record">
+        <h4>// SYSTEM LOG (PAST 3 DAYS)</h4>
+        <div class="tr-row"><span>T-1</span><span>VEC: 8 4 1 2</span><span class="hit">[MATCH]</span></div>
+        <div class="tr-row"><span>T-2</span><span>VEC: 3 9 0 5</span><span class="hit">[MATCH]</span></div>
+        <div class="tr-row"><span>T-3</span><span>VEC: 1 7 6 4</span><span class="miss">[FAIL]</span></div>
+      </div>
+
+      <div class="share-group">
+        <button class="s-btn" onclick="share('WhatsApp')">SHARE_WA</button>
+        <button class="s-btn" onclick="share('TikTok')">SHARE_TT</button>
+        <button class="s-btn" onclick="share('Instagram')">SHARE_IG</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ==========================================
+// 1. MATRIX BACKGROUND
+// ==========================================
+const canvas = document.getElementById('matrix-bg');
+const ctx = canvas.getContext('2d');
+canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ@#$%&*';
+const drops = [];
+for (let i = 0; i < canvas.width / 14; i++) drops[i] = 1;
+
+function drawMatrix() {
+  ctx.fillStyle = 'rgba(2, 4, 6, 0.08)'; 
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#00ff41'; // Hijau
+  ctx.font = '14px monospace';
+  for (let i = 0; i < drops.length; i++) {
+    ctx.fillText(chars[Math.floor(Math.random() * chars.length)], i * 14, drops[i] * 14);
+    if (drops[i] * 14 > canvas.height && Math.random() > 0.975) drops[i] = 0;
+    drops[i]++;
+  }
+}
+setInterval(drawMatrix, 50);
+
+// ==========================================
+// 2. LOGIN & LOGOUT
+// ==========================================
+let usageCount = 0;
+function login(platform) {
+  document.getElementById('login-section').style.display = 'none';
+  document.getElementById('app-section').style.display = 'block';
+  document.getElementById('user-display').innerText = `root@${platform.toLowerCase()}_user`;
+}
+function logout() {
+  document.getElementById('login-section').style.display = 'block';
+  document.getElementById('app-section').style.display = 'none';
+  document.getElementById('result-box').style.display = 'none';
+  document.getElementById('input-area').style.display = 'block';
+  document.getElementById('terminal').innerHTML = '<div class="t-line info">> INITIALIZING KERNEL MODULES...</div>';
+}
+
+// ==========================================
+// 3. HACKER TERMINAL LOGS
+// ==========================================
+const terminal = document.getElementById('terminal');
+function log(text, type = '') {
+  const div = document.createElement('div');
+  div.className = `t-line ${type}`;
+  div.textContent = `> ${text}`;
+  terminal.appendChild(div);
+  terminal.scrollTop = terminal.scrollHeight;
+}
+
+function generatePrediction() {
+  if (usageCount >= 3) {
+    document.getElementById('paywall').style.display = 'flex';
+    return;
+  }
+  const input = document.getElementById('input-data').value;
+  if (!input) { log("ERR: NULL_INPUT_DETECTED", "err"); return; }
+
+  usageCount++;
+  document.getElementById('result-box').style.display = 'none';
+  document.getElementById('input-area').style.display = 'none';
+  document.getElementById('radar-container').style.display = 'flex';
+  terminal.innerHTML = '';
+  
+  log("BYPASSING SECURITY PROTOCOLS...", "warn");
+  log("INJECTING PAYLOAD INTO ENTROPY POOL...", "info");
+
+  setTimeout(() => {
+    log("EXTRACTING NUMERIC VECTORS...", "info");
+  }, 1000);
+
+  setTimeout(() => {
+    document.getElementById('radar-container').style.display = 'none';
+    log("ACCESS GRANTED. VECTOR FOUND.", "");
+    finishPrediction(input);
+  }, 3000);
+}
+
+// ==========================================
+// 4. LOGIKA MATEMATIKA PASTI (DETERMINISTIK)
+// ==========================================
+// Fungsi ini bikin angka seolah-olah dihitung dari input, bukan random.
+// Input yang sama di hari yang sama akan menghasilkan output yang SAMA.
+function finishPrediction(inputStr) {
+  const method = document.getElementById('method').value;
+  
+  // 1. Buat "Seed" dari input user + tanggal hari ini
+  let seed = 0;
+  const strToHash = inputStr + new Date().toDateString() + method;
+  for (let i = 0; i < strToHash.length; i++) {
+    seed = (seed << 5) - seed + strToHash.charCodeAt(i);
+    seed |= 0; // Konversi ke 32-bit integer
+  }
+  seed = Math.abs(seed); // Pastikan positif
+
+  // 2. Generate 4 angka dari seed
+  let n = [];
+  let tempSeed = seed;
+  for (let i = 0; i < 4; i++) {
+    n.push(tempSeed % 10); // Ambil digit terakhir
+    tempSeed = Math.floor(tempSeed / 10) + (tempSeed * 7); // Geser & mutasi seed
+    if (tempSeed === 0) tempSeed = 1234; // Cegah infinite loop 0
+  }
+
+  document.getElementById('n1').innerText = n[0];
+  document.getElementById('n2').innerText = n[1];
+  document.getElementById('n3').innerText = n[2];
+  document.getElementById('n4').innerText = n[3];
+
+  // 3. Tampilkan rumus matematika yang BENERAN pakai angka input user
+  let math = '';
+  const inputNum = parseInt(inputStr.replace(/\D/g, '')) || 123; 
+  
+  if (method === 'prime') {
+    // Cari faktor prima dari input
+    let factors = [];
+    let num = inputNum;
+    for(let i = 2; i <= num; i++) {
+      while(num % i === 0) { factors.push(i); num /= i; }
+    }
+    const sumFactors = factors.reduce((a,b)=>a+b, 0);
+    math = `
+      <div>// PRIME FACTORIZATION</div>
+      <div>Input(n) = ${inputNum}</div>
+      <div>Factors = [${factors.slice(0,4).join(', ')}...]</div>
+      <div>Modulo(ΣPrime) = <span style="color:#00ff41">${sumFactors % 10}</span></div>
+    `;
+  } else if (method === 'hash') {
+    math = `
+      <div>// SHA-256 COLLISION</div>
+      <div>Hash(Input) = ${(seed).toString(16).substring(0,6)}...</div>
+      <div>XOR(Seed, Time) = <span style="color:#00ff41">${(seed ^ 0xFFFF).toString(16)}</span></div>
+      <div>Vector = Mod10(Hash)</div>
+    `;
+  } else if (method === 'fibonacci') {
+    math = `
+      <div>// FIBONACCI OVERRIDE</div>
+      <div>F(n) = F(n-1) + F(n-2)</div>
+      <div>F(${n[0]}) + F(${n[1]}) = <span style="color:#00ff41">${n[0]+n[1]}</span></div>
+      <div>Golden Ratio Mod = ${(n[0]/n[1]).toFixed(3)}</div>
+    `;
+  } else {
+    math = `
+      <div>// THERMODYNAMIC ENTROPY</div>
+      <div>∆S = k_B ln(W)</div>
+      <div>W = ${inputNum} States</div>
+      <div>Entropy = <span style="color:#00ff41">${(Math.log(inputNum) * 1.38).toFixed(4)}</span></div>
+    `;
+  }
+  
+  document.getElementById('math-display').innerHTML = math;
+
+  document.getElementById('result-box').style.display = 'block';
+  document.getElementById('input-area').style.display = 'block';
+  document.getElementById('btn-predict').innerText = `EXECUTE (${3 - usageCount} LEFT)`;
+  if (usageCount >= 3) document.getElementById('btn-predict').innerText = 'LIMIT REACHED';
+}
+
+// ==========================================
+// 5. SHARE
+// ==========================================
+function share(platform) {
+  const n1 = document.getElementById('n1').innerText;
+  const n2 = document.getElementById('n2').innerText;
+  const n3 = document.getElementById('n3').innerText;
+  const n4 = document.getElementById('n4').innerText;
+  const text = `Sistem NeuralPredict nge-hack rumus: ${n1} ${n2} ${n3} ${n4}. Buruan cek sebelum di-patch!`;
+  
+  if (platform === 'WhatsApp') {
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+  } else {
+    navigator.clipboard.writeText(text);
+    alert(`Payload copied! Paste di ${platform}.`);
+    if(platform === 'TikTok') window.open('https://www.tiktok.com/upload', '_blank');
+    if(platform === 'Instagram') window.open('https://www.instagram.com/', '_blank');
+  }
+}
+</script>
+</body>
+</html>
