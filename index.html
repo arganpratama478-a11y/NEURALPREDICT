@@ -307,7 +307,7 @@ function log(text, type = '') {
 
 function generatePrediction() {
   // Cek limit
-  if (usageCount >= 3) {
+  if (usageCount >= 10) {
     startPaywallTimer(); 
     document.getElementById('paywall').style.display = 'flex';
     return;
@@ -384,7 +384,7 @@ function finishPrediction() {
   document.getElementById('input-area').style.display = 'block';
   document.getElementById('btn-predict').innerText = `EXECUTE (${3 - usageCount} LEFT)`;
   
-  if (usageCount >= 3) {
+  if (usageCount >= 10) {
     document.getElementById('btn-predict').innerText = 'LIMIT REACHED';
   }
 }
